@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
-
+#include <math.h>
 
 extern char *optarg;
 
@@ -24,6 +24,27 @@ extern char *optarg;
 // tag用于缓存行与发送地址的对应, set index用于快速确认数据所处的缓存组, block offset用于找到对应的缓存行后加载该偏移下的数据
 
 void hexTObinary(char* addr);
+
+// 定义一个csim结构体，2^s 个组，E 行，每个组内有 E 缓存块
+//每个缓存块有三个属性，tag(地址的标记符)，valid(这个地址的值是否可用)，block(加载的2^b字节内存)
+typedef struct Block
+{
+    char tag[ADDRLEN];
+    int v;
+    char* block;
+}Block;
+
+
+typedef struct  Cache
+{
+    int s;
+    int b;
+    int E;
+    Block** BlockBox;
+}Cache;
+
+Cache* create_Cache(int s,int E,int b);
+void cache_load(Cache* cache,char* addr,int size);
 
 int main(int argc,char* argv[])
 {   
@@ -68,6 +89,7 @@ int main(int argc,char* argv[])
         printf("file open error");
         exit(1);
     }
+    Cache* cache = create_Cache(val_s,val_E,val_b);
     char buffer[256];
     while(fgets(buffer,sizeof(buffer),fp) != NULL){
         char operation;
@@ -85,6 +107,14 @@ int main(int argc,char* argv[])
         if (item_catch == 3){
             printf("操作: %c    | tag: %s | set index: %s | block offset: %s | 大小: %d\n", operation,tag, set_index,block_offset, size);
         }
+        if(operation == 'L'){
+            
+        }else if(operation = 'M'){
+
+        }else if (operation = 'S'){
+
+        }
+        
     }
     // printSummary(0, 0, 0);
     return 0;
@@ -119,4 +149,43 @@ void hexTObinary(char *addr){
         }
         memcpy(&addr[ADDRLEN - (str_len - idx) * 4],hex_to_bin_lookup[index],4);
     }
+}
+Cache* create_Cache(int s,int E,int b){
+    Cache* cache = (Cache*)malloc(sizeof(Cache));
+    if (cache == NULL){
+        perror("cache malloc error");
+        free(cache);
+        return NULL;
+    }
+    cache->b = b;
+    cache->s = s;
+    cache->E = E;
+    int size = 1;
+    int block = 1;
+    for (int i = 0;i < cache->s;++i){
+        size = size * 2;
+    }
+    for (int i = 0;i < cache->b;++i){
+        block = block * 2;
+    }
+    cache->BlockBox = (Block**)malloc(size*sizeof(Block*));
+    if (cache->BlockBox == NULL){
+        perror("BlockBox malloc error");
+        free(cache->BlockBox);
+        free(cache);
+        return NULL;
+    }
+    for (int i = 0;i < size;++i){
+        cache->BlockBox[i] = (Block*)malloc(block*sizeof(Block));
+        for (int j=0;j < E;++j){
+            cache->BlockBox[i][j].block = malloc(block*sizeof(char));
+        }
+        if (cache->BlockBox == NULL){
+            perror("Block set malloc err");
+            free(cache->BlockBox);
+            free(cache);
+            return NULL;
+        }
+    }
+    return cache;
 }
